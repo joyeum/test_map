@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>패밀리 트래블 맵 - 아이와 함께하는 여행</title>
+    <title>Global Family Travel Map - Worldwide Family Destinations</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <style>
         * {
             margin: 0;
@@ -13,7 +14,7 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2980b9 0%, #6bb6ff 50%, #00d4aa 100%);
             min-height: 100vh;
         }
 
@@ -36,7 +37,7 @@
         }
 
         .header h1::before {
-            content: "🗺️";
+            content: "🌍";
             font-size: 2rem;
         }
 
@@ -48,13 +49,56 @@
         }
 
         .sidebar {
-            width: 300px;
+            width: 320px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 1.5rem;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             overflow-y: auto;
+        }
+
+        .region-selector {
+            margin-bottom: 2rem;
+        }
+
+        .region-selector h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .region-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .region-btn {
+            padding: 10px 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            color: #666;
+            text-align: center;
+        }
+
+        .region-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .region-btn.active {
+            background: linear-gradient(135deg, #2980b9, #00d4aa);
+            color: white;
+            border-color: transparent;
         }
 
         .filter-section {
@@ -111,7 +155,7 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             cursor: pointer;
             transition: all 0.3s ease;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #2980b9;
         }
 
         .place-card:hover {
@@ -123,6 +167,12 @@
             color: #333;
             margin-bottom: 0.5rem;
             font-size: 1rem;
+        }
+
+        .place-location {
+            color: #888;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
         }
 
         .place-tags {
@@ -158,59 +208,39 @@
         .map {
             width: 100%;
             height: 100%;
-            background: linear-gradient(45deg, #e8f5e8, #f0f8ff);
-            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        /* Custom marker styles */
+        .custom-marker {
+            width: 35px;
+            height: 35px;
+            background: white;
+            border: 3px solid #2980b9;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .map-placeholder {
-            text-align: center;
-            color: #666;
-            font-size: 1.2rem;
-        }
-
-        .marker {
-            position: absolute;
-            width: 40px;
-            height: 40px;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             cursor: pointer;
             transition: all 0.3s ease;
-            z-index: 10;
         }
 
-        .marker:hover {
-            transform: scale(1.2);
+        .custom-marker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
         }
 
-        .marker.playground { top: 20%; left: 25%; }
-        .marker.zoo { top: 30%; left: 60%; }
-        .marker.museum { top: 50%; left: 30%; }
-        .marker.restaurant { top: 60%; left: 70%; }
-        .marker.park { top: 70%; left: 20%; }
-        .marker.aquarium { top: 25%; left: 80%; }
-        .marker.beach { top: 80%; left: 50%; }
-        .marker.hotel { top: 40%; left: 45%; }
-
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            pointer-events: none;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
-
-        .marker:hover .tooltip {
-            opacity: 1;
-            transform: translateY(-50px);
-        }
+        .custom-marker.theme-park { border-color: #e74c3c; }
+        .custom-marker.zoo { border-color: #27ae60; }
+        .custom-marker.museum { border-color: #3498db; }
+        .custom-marker.beach { border-color: #16a085; }
+        .custom-marker.nature { border-color: #2ecc71; }
+        .custom-marker.city { border-color: #9b59b6; }
+        .custom-marker.cultural { border-color: #f39c12; }
+        .custom-marker.adventure { border-color: #e67e22; }
 
         .floating-info {
             position: absolute;
@@ -221,7 +251,22 @@
             padding: 1rem;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            max-width: 250px;
+            max-width: 280px;
+            z-index: 1000;
+        }
+
+        .stats-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+            color: #666;
+            z-index: 1000;
         }
 
         @media (max-width: 768px) {
@@ -237,218 +282,442 @@
                 height: 400px;
                 order: 1;
             }
+            .region-buttons {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <header class="header">
-        <h1>패밀리 트래블 맵</h1>
+        <h1>Global Family Travel Map</h1>
     </header>
 
     <div class="container">
         <aside class="sidebar">
-            <div class="filter-section">
-                <h3>🎯 카테고리 필터</h3>
-                <div class="filter-buttons">
-                    <button class="filter-btn active" data-category="all">전체</button>
-                    <button class="filter-btn" data-category="playground">놀이터</button>
-                    <button class="filter-btn" data-category="museum">박물관</button>
-                    <button class="filter-btn" data-category="restaurant">식당</button>
-                    <button class="filter-btn" data-category="hotel">숙박</button>
-                    <button class="filter-btn" data-category="nature">자연</button>
+            <div class="region-selector">
+                <h3>🌏 Select Region</h3>
+                <div class="region-buttons">
+                    <button class="region-btn active" data-region="all">Worldwide</button>
+                    <button class="region-btn" data-region="asia">Asia</button>
+                    <button class="region-btn" data-region="europe">Europe</button>
+                    <button class="region-btn" data-region="americas">Americas</button>
+                    <button class="region-btn" data-region="oceania">Oceania</button>
+                    <button class="region-btn" data-region="africa">Africa</button>
                 </div>
             </div>
 
             <div class="filter-section">
-                <h3>👶 연령대</h3>
+                <h3>🎯 Category Filter</h3>
                 <div class="filter-buttons">
-                    <button class="filter-btn active" data-age="all">전체</button>
-                    <button class="filter-btn" data-age="infant">유아 (0-3세)</button>
-                    <button class="filter-btn" data-age="child">어린이 (4-12세)</button>
-                    <button class="filter-btn" data-age="teen">청소년 (13-18세)</button>
+                    <button class="filter-btn active" data-category="all">All</button>
+                    <button class="filter-btn" data-category="theme-park">Theme Parks</button>
+                    <button class="filter-btn" data-category="museum">Museums</button>
+                    <button class="filter-btn" data-category="nature">Nature</button>
+                    <button class="filter-btn" data-category="beach">Beaches</button>
+                    <button class="filter-btn" data-category="cultural">Cultural</button>
+                    <button class="filter-btn" data-category="adventure">Adventure</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>👶 Age Group</h3>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-age="all">All Ages</button>
+                    <button class="filter-btn" data-age="infant">Toddlers (0-3)</button>
+                    <button class="filter-btn" data-age="child">Children (4-12)</button>
+                    <button class="filter-btn" data-age="teen">Teens (13-18)</button>
                 </div>
             </div>
 
             <div class="places-list" id="placesList">
-                <!-- 장소 목록이 여기에 동적으로 생성됩니다 -->
+                <!-- Places will be dynamically generated here -->
             </div>
         </aside>
 
         <main class="map-container">
             <div class="map" id="map">
-                <div class="map-placeholder">
-                    <div>🗺️ 서울 가족 여행지</div>
-                    <div style="font-size: 0.9rem; margin-top: 10px; color: #888;">마커를 클릭하여 상세 정보를 확인하세요</div>
-                </div>
-
-                <!-- 지도 마커들 -->
-                <div class="marker playground" data-place="seoul-playground">
-                    🎠
-                    <div class="tooltip">서울숲 놀이터</div>
-                </div>
-                <div class="marker zoo" data-place="seoul-zoo">
-                    🦁
-                    <div class="tooltip">서울대공원 동물원</div>
-                </div>
-                <div class="marker museum" data-place="science-museum">
-                    🔬
-                    <div class="tooltip">국립과천과학관</div>
-                </div>
-                <div class="marker restaurant" data-place="family-restaurant">
-                    🍽️
-                    <div class="tooltip">키즈카페 레스토랑</div>
-                </div>
-                <div class="marker park" data-place="han-river">
-                    🌳
-                    <div class="tooltip">한강공원</div>
-                </div>
-                <div class="marker aquarium" data-place="coex-aquarium">
-                    🐠
-                    <div class="tooltip">COEX 아쿠아리움</div>
-                </div>
-                <div class="marker beach" data-place="banpo-rainbow">
-                    🌈
-                    <div class="tooltip">반포 무지개분수</div>
-                </div>
-                <div class="marker hotel" data-place="family-hotel">
-                    🏨
-                    <div class="tooltip">패밀리 호텔</div>
-                </div>
+                <!-- Leaflet map will be loaded here -->
             </div>
 
             <div class="floating-info" id="floatingInfo" style="display: none;">
                 <h4 id="infoTitle"></h4>
+                <p id="infoLocation" style="color: #888; font-size: 0.9rem; margin-bottom: 8px;"></p>
                 <p id="infoDescription"></p>
                 <div id="infoTags"></div>
+            </div>
+
+            <div class="stats-info" id="statsInfo">
+                <div>🗺️ Visible Places: <span id="visiblePlaces">0</span></div>
+                <div>🌍 Active Region: <span id="activeRegion">Worldwide</span></div>
             </div>
         </main>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
-        // 가족 여행지 데이터
+        // Initialize map (worldwide view)
+        const map = L.map('map').setView([20, 0], 2);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Global family travel destinations data
         const places = [
+            // Asia
             {
-                id: 'seoul-playground',
-                name: '서울숲 놀이터',
-                category: 'playground',
-                ageGroup: ['infant', 'child'],
-                description: '넓은 잔디밭과 다양한 놀이시설이 있는 도심 속 자연 놀이공간',
-                tags: ['무료', '주차가능', '피크닉', '자연체험'],
-                rating: 4.5
-            },
-            {
-                id: 'seoul-zoo',
-                name: '서울대공원 동물원',
-                category: 'nature',
+                id: 'tokyo-disneyland',
+                name: 'Tokyo Disneyland',
+                city: 'Tokyo, Japan',
+                region: 'asia',
+                category: 'theme-park',
                 ageGroup: ['infant', 'child', 'teen'],
-                description: '다양한 동물들을 만날 수 있는 대형 동물원, 스카이리프트 탑승 가능',
-                tags: ['동물체험', '스카이리프트', '교육적', '하루종일'],
-                rating: 4.7
+                description: 'Magical Disney experience with unique Japanese charm in one of the world\'s most beloved theme parks',
+                tags: ['Disney', 'Theme Park', 'Family Fun', 'Characters'],
+                rating: 4.8,
+                lat: 35.6329, lng: 139.8804, icon: '🏰'
             },
             {
-                id: 'science-museum',
-                name: '국립과천과학관',
+                id: 'singapore-zoo',
+                name: 'Singapore Zoo',
+                city: 'Singapore',
+                region: 'asia',
+                category: 'zoo',
+                ageGroup: ['infant', 'child', 'teen'],
+                description: 'World-class zoo with natural habitats and amazing Night Safari experience',
+                tags: ['Zoo', 'Safari', 'Educational', 'Night Tours'],
+                rating: 4.7,
+                lat: 1.4043, lng: 103.7930, icon: '🦁'
+            },
+            {
+                id: 'bali-beaches',
+                name: 'Bali Beaches',
+                city: 'Bali, Indonesia',
+                region: 'asia',
+                category: 'beach',
+                ageGroup: ['child', 'teen'],
+                description: 'Crystal clear waters and golden sandy beaches with family-friendly resorts in tropical paradise',
+                tags: ['Beaches', 'Resorts', 'Water Sports', 'Tropical'],
+                rating: 4.5,
+                lat: -8.4095, lng: 115.1889, icon: '🏖️'
+            },
+            {
+                id: 'great-wall',
+                name: 'Great Wall of China',
+                city: 'Beijing, China',
+                region: 'asia',
+                category: 'cultural',
+                ageGroup: ['child', 'teen'],
+                description: 'One of the world\'s greatest wonders, offering breathtaking views and rich history',
+                tags: ['Historical', 'UNESCO', 'Hiking', 'Culture'],
+                rating: 4.6,
+                lat: 40.4319, lng: 116.5704, icon: '🏯'
+            },
+
+            // Europe
+            {
+                id: 'disneyland-paris',
+                name: 'Disneyland Paris',
+                city: 'Paris, France',
+                region: 'europe',
+                category: 'theme-park',
+                ageGroup: ['infant', 'child', 'teen'],
+                description: 'Europe\'s only Disneyland with French flair and magical experiences for the whole family',
+                tags: ['Disney', 'Theme Park', 'European Travel', 'Castles'],
+                rating: 4.4,
+                lat: 48.8720, lng: 2.7796, icon: '🏰'
+            },
+            {
+                id: 'london-museums',
+                name: 'London Museum District',
+                city: 'London, UK',
+                region: 'europe',
                 category: 'museum',
                 ageGroup: ['child', 'teen'],
-                description: '체험형 과학 전시와 천체관측이 가능한 국내 최대 과학관',
-                tags: ['교육적', '체험활동', '실내활동', '우천시좋음'],
-                rating: 4.6
+                description: 'World-class museums including British Museum and Natural History Museum in education hub',
+                tags: ['Museums', 'Education', 'History', 'Science'],
+                rating: 4.8,
+                lat: 51.4994, lng: -0.1759, icon: '🏛️'
             },
             {
-                id: 'family-restaurant',
-                name: '키즈카페 레스토랑',
-                category: 'restaurant',
-                ageGroup: ['infant', 'child'],
-                description: '아이들이 놀 수 있는 놀이공간이 있는 가족 친화적 레스토랑',
-                tags: ['놀이시설', '키즈메뉴', '실내', '생일파티'],
-                rating: 4.3
+                id: 'swiss-alps',
+                name: 'Swiss Alps',
+                city: 'Interlaken, Switzerland',
+                region: 'europe',
+                category: 'nature',
+                ageGroup: ['child', 'teen'],
+                description: 'Majestic Alpine mountains and crystal-clear lakes with scenic train journeys',
+                tags: ['Mountains', 'Train Travel', 'Scenic Views', 'Hiking'],
+                rating: 4.9,
+                lat: 46.6863, lng: 7.8632, icon: '🏔️'
             },
             {
-                id: 'han-river',
-                name: '한강공원',
+                id: 'iceland-geysers',
+                name: 'Iceland Geysers',
+                city: 'Reykjavik, Iceland',
+                region: 'europe',
+                category: 'nature',
+                ageGroup: ['child', 'teen'],
+                description: 'Mystical geysers, Northern Lights, and unique geological formations in nature\'s wonderland',
+                tags: ['Geysers', 'Northern Lights', 'Natural Phenomena', 'Unique'],
+                rating: 4.7,
+                lat: 64.3078, lng: -20.2986, icon: '🌋'
+            },
+
+            // Americas
+            {
+                id: 'disney-world',
+                name: 'Walt Disney World',
+                city: 'Orlando, USA',
+                region: 'americas',
+                category: 'theme-park',
+                ageGroup: ['infant', 'child', 'teen'],
+                description: 'The world\'s largest Disney resort with 4 theme parks and endless entertainment',
+                tags: ['Disney', 'Theme Parks', 'Magic Kingdom', 'Massive Scale'],
+                rating: 4.9,
+                lat: 28.3772, lng: -81.5707, icon: '🏰'
+            },
+            {
+                id: 'yellowstone',
+                name: 'Yellowstone National Park',
+                city: 'Wyoming, USA',
+                region: 'americas',
+                category: 'nature',
+                ageGroup: ['child', 'teen'],
+                description: 'World\'s first national park featuring geysers, hot springs, and wildlife observation',
+                tags: ['National Park', 'Geysers', 'Wildlife', 'Camping'],
+                rating: 4.8,
+                lat: 44.4280, lng: -110.5885, icon: '🐻'
+            },
+            {
+                id: 'niagara-falls',
+                name: 'Niagara Falls',
+                city: 'Niagara, USA/Canada',
+                region: 'americas',
                 category: 'nature',
                 ageGroup: ['infant', 'child', 'teen'],
-                description: '자전거 타기, 피크닉, 수상스포츠를 즐길 수 있는 서울의 대표 공원',
-                tags: ['자전거', '피크닉', '수상스포츠', '야경'],
-                rating: 4.4
+                description: 'Spectacular waterfalls offering breathtaking views and boat tour experiences',
+                tags: ['Waterfalls', 'Boat Tours', 'Natural Wonder', 'Spectacular'],
+                rating: 4.6,
+                lat: 43.0962, lng: -79.0377, icon: '💧'
             },
             {
-                id: 'coex-aquarium',
-                name: 'COEX 아쿠아리움',
-                ageGroup: ['infant', 'child', 'teen'],
-                category: 'museum',
-                description: '도심 속 바다 세계, 다양한 해양생물 관람 및 체험 프로그램',
-                tags: ['실내활동', '해양생물', '체험프로그램', '우천시좋음'],
-                rating: 4.5
+                id: 'machu-picchu',
+                name: 'Machu Picchu',
+                city: 'Cusco, Peru',
+                region: 'americas',
+                category: 'cultural',
+                ageGroup: ['teen'],
+                description: 'Mysterious Inca ruins offering history and adventure in the Andes mountains',
+                tags: ['Ruins', 'History', 'Adventure', 'Inca Civilization'],
+                rating: 4.8,
+                lat: -13.1631, lng: -72.5450, icon: '🏛️'
             },
+
+            // Oceania
             {
-                id: 'banpo-rainbow',
-                name: '반포 무지개분수',
+                id: 'great-barrier-reef',
+                name: 'Great Barrier Reef',
+                city: 'Queensland, Australia',
+                region: 'oceania',
                 category: 'nature',
-                ageGroup: ['infant', 'child', 'teen'],
-                description: '음악과 함께하는 아름다운 분수쇼, 여름철 물놀이 가능',
-                tags: ['분수쇼', '야경', '물놀이', '계절한정'],
-                rating: 4.2
+                ageGroup: ['child', 'teen'],
+                description: 'World\'s largest coral reef system perfect for snorkeling and marine life exploration',
+                tags: ['Coral Reef', 'Snorkeling', 'Marine Life', 'Conservation'],
+                rating: 4.7,
+                lat: -16.2839, lng: 145.7781, icon: '🐠'
             },
             {
-                id: 'family-hotel',
-                name: '패밀리 호텔',
-                category: 'hotel',
+                id: 'sydney-harbour',
+                name: 'Sydney Harbour',
+                city: 'Sydney, Australia',
+                region: 'oceania',
+                category: 'city',
                 ageGroup: ['infant', 'child', 'teen'],
-                description: '키즈 클럽과 수영장이 있는 가족 전용 호텔',
-                tags: ['키즈클럽', '수영장', '패밀리룸', '조식뷔페'],
-                rating: 4.6
+                description: 'Iconic harbor featuring Opera House and Harbour Bridge with stunning cityscapes',
+                tags: ['City Tourism', 'Opera House', 'Bridge', 'Harbor'],
+                rating: 4.6,
+                lat: -33.8568, lng: 151.2153, icon: '🏛️'
+            },
+            {
+                id: 'rotorua',
+                name: 'Rotorua',
+                city: 'Rotorua, New Zealand',
+                region: 'oceania',
+                category: 'nature',
+                ageGroup: ['child', 'teen'],
+                description: 'Geothermal wonderland with Maori culture experiences in New Zealand',
+                tags: ['Geothermal', 'Hot Springs', 'Maori Culture', 'Unique'],
+                rating: 4.5,
+                lat: -38.1368, lng: 176.2497, icon: '💨'
+            },
+
+            // Africa
+            {
+                id: 'serengeti',
+                name: 'Serengeti National Park',
+                city: 'Tanzania',
+                region: 'africa',
+                category: 'nature',
+                ageGroup: ['child', 'teen'],
+                description: 'Witness the Great Migration and African wildlife in their natural habitat through safari',
+                tags: ['Safari', 'Wildlife', 'Great Migration', 'Africa'],
+                rating: 4.9,
+                lat: -2.3333, lng: 34.8333, icon: '🦁'
+            },
+            {
+                id: 'pyramids-giza',
+                name: 'Pyramids of Giza',
+                city: 'Cairo, Egypt',
+                region: 'africa',
+                category: 'cultural',
+                ageGroup: ['child', 'teen'],
+                description: 'Ancient Egyptian monuments offering mysterious history and archaeological wonders',
+                tags: ['Pyramids', 'Ancient Civilization', 'History', 'Sphinx'],
+                rating: 4.4,
+                lat: 29.9792, lng: 31.1342, icon: '🔺'
+            },
+            {
+                id: 'cape-town',
+                name: 'Cape Town',
+                city: 'Cape Town, South Africa',
+                region: 'africa',
+                category: 'city',
+                ageGroup: ['teen'],
+                description: 'Beautiful city with Table Mountain and stunning coastlines, Africa\'s gem destination',
+                tags: ['City', 'Mountains', 'Coastline', 'Wine'],
+                rating: 4.5,
+                lat: -33.9249, lng: 18.4241, icon: '🏔️'
             }
         ];
 
         let currentFilters = {
+            region: 'all',
             category: 'all',
             age: 'all'
         };
 
-        // 필터 버튼 이벤트
-        document.querySelectorAll('.filter-btn').forEach(btn => {
+        let markers = [];
+
+        // Region map view settings
+        const regionViews = {
+            all: { center: [20, 0], zoom: 2 },
+            asia: { center: [30, 120], zoom: 3 },
+            europe: { center: [54, 15], zoom: 4 },
+            americas: { center: [15, -90], zoom: 3 },
+            oceania: { center: [-25, 145], zoom: 4 },
+            africa: { center: [0, 20], zoom: 3 }
+        };
+
+        // Region name mapping
+        const regionNames = {
+            all: 'Worldwide',
+            asia: 'Asia',
+            europe: 'Europe',
+            americas: 'Americas',
+            oceania: 'Oceania',
+            africa: 'Africa'
+        };
+
+        // Filter button events
+        document.querySelectorAll('.region-btn, .filter-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                const filterType = this.dataset.category ? 'category' : 'age';
-                const filterValue = this.dataset.category || this.dataset.age;
+                const filterType = this.dataset.region ? 'region' : 
+                                  this.dataset.category ? 'category' : 'age';
+                const filterValue = this.dataset.region || this.dataset.category || this.dataset.age;
                 
-                // 같은 타입의 다른 버튼들 비활성화
-                document.querySelectorAll(`[data-${filterType}]`).forEach(b => b.classList.remove('active'));
+                // Deactivate other buttons of the same type
+                const selector = filterType === 'region' ? '[data-region]' : 
+                               filterType === 'category' ? '[data-category]' : '[data-age]';
+                document.querySelectorAll(selector).forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 
                 currentFilters[filterType] = filterValue;
+                
+                // Adjust map view when region changes
+                if (filterType === 'region') {
+                    const view = regionViews[filterValue];
+                    map.setView(view.center, view.zoom);
+                }
+                
                 updateDisplay();
             });
         });
 
-        // 마커 클릭 이벤트
-        document.querySelectorAll('.marker').forEach(marker => {
-            marker.addEventListener('click', function() {
-                const placeId = this.dataset.place;
-                const place = places.find(p => p.id === placeId);
-                showPlaceInfo(place);
+        // Create custom marker function
+        function createCustomMarker(place) {
+            const markerElement = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="custom-marker ${place.category}" title="${place.name}">${place.icon}</div>`,
+                iconSize: [35, 35],
+                iconAnchor: [17, 35]
             });
-        });
+            
+            const marker = L.marker([place.lat, place.lng], { icon: markerElement })
+                .bindPopup(`
+                    <div style="min-width: 220px;">
+                        <h4 style="margin: 0 0 4px 0; color: #333;">${place.name}</h4>
+                        <p style="margin: 0 0 8px 0; font-size: 0.85rem; color: #888;">${place.city}</p>
+                        <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #666;">${place.description}</p>
+                        <div style="margin-bottom: 8px;">
+                            ${place.tags.map(tag => `<span style="background: #f0f0f0; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; margin-right: 4px;">${tag}</span>`).join('')}
+                        </div>
+                        <div style="font-size: 0.8rem; color: #777;">
+                            ⭐ ${place.rating} | ${getAgeGroupText(place.ageGroup)}
+                        </div>
+                    </div>
+                `);
+            
+            marker.placeData = place;
+            return marker;
+        }
+
+        // Add markers to map
+        function addMarkersToMap(filteredPlaces) {
+            // Remove existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            // Add new markers
+            filteredPlaces.forEach(place => {
+                const marker = createCustomMarker(place);
+                markers.push(marker);
+                marker.addTo(map);
+                
+                // Marker click event
+                marker.on('click', function() {
+                    showPlaceInfo(place);
+                });
+            });
+        }
 
         function updateDisplay() {
             const filteredPlaces = places.filter(place => {
+                const regionMatch = currentFilters.region === 'all' || place.region === currentFilters.region;
                 const categoryMatch = currentFilters.category === 'all' || place.category === currentFilters.category;
                 const ageMatch = currentFilters.age === 'all' || place.ageGroup.includes(currentFilters.age);
-                return categoryMatch && ageMatch;
+                return regionMatch && categoryMatch && ageMatch;
             });
 
-            // 사이드바 목록 업데이트
+            // Update sidebar list
             updatePlacesList(filteredPlaces);
             
-            // 지도 마커 표시/숨김
-            updateMapMarkers(filteredPlaces);
+            // Update map markers
+            addMarkersToMap(filteredPlaces);
+
+            // Update stats
+            updateStats(filteredPlaces.length);
         }
 
         function updatePlacesList(filteredPlaces) {
             const placesList = document.getElementById('placesList');
             placesList.innerHTML = filteredPlaces.map(place => `
-                <div class="place-card" onclick="showPlaceInfo(${JSON.stringify(place).replace(/"/g, '&quot;')})">
+                <div class="place-card" onclick="focusOnPlace('${place.id}')">
                     <h4>${place.name}</h4>
+                    <div class="place-location">${place.city}</div>
                     <div class="place-tags">
                         ${place.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
@@ -459,48 +728,49 @@
             `).join('');
         }
 
-        function updateMapMarkers(filteredPlaces) {
-            document.querySelectorAll('.marker').forEach(marker => {
-                const placeId = marker.dataset.place;
-                const isVisible = filteredPlaces.some(place => place.id === placeId);
-                marker.style.display = isVisible ? 'block' : 'none';
-            });
+        function focusOnPlace(placeId) {
+            const place = places.find(p => p.id === placeId);
+            if (place) {
+                // Move map center to the place
+                map.setView([place.lat, place.lng], 8);
+                
+                // Open corresponding marker popup
+                const marker = markers.find(m => m.placeData && m.placeData.id === placeId);
+                if (marker) {
+                    marker.openPopup();
+                }
+                
+                showPlaceInfo(place);
+            }
         }
 
         function showPlaceInfo(place) {
             const floatingInfo = document.getElementById('floatingInfo');
             const infoTitle = document.getElementById('infoTitle');
+            const infoLocation = document.getElementById('infoLocation');
             const infoDescription = document.getElementById('infoDescription');
             const infoTags = document.getElementById('infoTags');
 
             infoTitle.textContent = place.name;
+            infoLocation.textContent = place.city;
             infoDescription.textContent = place.description;
             infoTags.innerHTML = place.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
 
             floatingInfo.style.display = 'block';
 
-            // 3초 후 자동으로 숨김
+            // Auto hide after 5 seconds
             setTimeout(() => {
                 floatingInfo.style.display = 'none';
             }, 5000);
         }
 
-        function getAgeGroupText(ageGroups) {
-            const ageTexts = {
-                'infant': '유아',
-                'child': '어린이',
-                'teen': '청소년'
-            };
-            return ageGroups.map(age => ageTexts[age]).join(', ');
+        function updateStats(visibleCount) {
+            document.getElementById('visiblePlaces').textContent = visibleCount;
+            document.getElementById('activeRegion').textContent = regionNames[currentFilters.region];
         }
 
-        // 초기 화면 로드
-        updateDisplay();
-
-        // 플로팅 정보창 클릭시 닫기
-        document.getElementById('floatingInfo').addEventListener('click', function() {
-            this.style.display = 'none';
-        });
-    </script>
-</body>
-</html>
+        function getAgeGroupText(ageGroups) {
+            const ageTexts = {
+                'infant': 'Toddlers',
+                'child': 'Children', 
+                
