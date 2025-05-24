@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>패밀리 트래블 맵 - 아이와 함께하는 여행</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1::before {
+            content: "🗺️";
+            font-size: 2rem;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 80px);
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .filter-section {
+            margin-bottom: 2rem;
+        }
+
+        .filter-section h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+        }
+
+        .places-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .place-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+
+        .place-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .place-card h4 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .place-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag {
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        .place-info {
+            font-size: 0.8rem;
+            color: #777;
+        }
+
+        .map-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #e8f5e8, #f0f8ff);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .map-placeholder {
+            text-align: center;
+            color: #666;
+            font-size: 1.2rem;
+        }
+
+        .marker {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .marker:hover {
+            transform: scale(1.2);
+        }
+
+        .marker.playground { top: 20%; left: 25%; }
+        .marker.zoo { top: 30%; left: 60%; }
+        .marker.museum { top: 50%; left: 30%; }
+        .marker.restaurant { top: 60%; left: 70%; }
+        .marker.park { top: 70%; left: 20%; }
+        .marker.aquarium { top: 25%; left: 80%; }
+        .marker.beach { top: 80%; left: 50%; }
+        .marker.hotel { top: 40%; left: 45%; }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .marker:hover .tooltip {
+            opacity: 1;
+            transform: translateY(-50px);
+        }
+
+        .floating-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 250px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+            .map-container {
+                height: 400px;
+                order: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>패밀리 트래블 맵</h1>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="filter-section">
+                <h3>🎯 카테고리 필터</h3>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-category="all">전체</button>
+                    <button class="filter-btn" data-category="playground">놀이터</button>
+                    <button class="filter-btn" data-category="museum">박물관</button>
+                    <button class="filter-btn" data-category="restaurant">식당</button>
+                    <button class="filter-btn" data-category="hotel">숙박</button>
+                    <button class="filter-btn" data-category="nature">자연</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>👶 연령대</h3>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-age="all">전체</button>
+                    <button class="filter-btn" data-age="infant">유아 (0-3세)</button>
+                    <button class="filter-btn" data-age="child">어린이 (4-12세)</button>
+                    <button class="filter-btn" data-age="teen">청소년 (13-18세)</button>
+                </div>
+            </div>
+
+            <div class="places-list" id="placesList">
+                <!-- 장소 목록이 여기에 동적으로 생성됩니다 -->
+            </div>
+        </aside>
+
+        <main class="map-container">
+            <div class="map" id="map">
+                <div class="map-placeholder">
+                    <div>🗺️ 서울 가족 여행지</div>
+                    <div style="font-size: 0.9rem; margin-top: 10px; color: #888;">마커를 클릭하여 상세 정보를 확인하세요</div>
+                </div>
+
+                <!-- 지도 마커들 -->
+                <div class="marker playground" data-place="seoul-playground">
+                    🎠
+                    <div class="tooltip">서울숲 놀이터</div>
+                </div>
+                <div class="marker zoo" data-place="seoul-zoo">
+                    🦁
+                    <div class="tooltip">서울대공원 동물원</div>
+                </div>
+                <div class="marker museum" data-place="science-museum">
+                    🔬
+                    <div class="tooltip">국립과천과학관</div>
+                </div>
+                <div class="marker restaurant" data-place="family-restaurant">
+                    🍽️
+                    <div class="tooltip">키즈카페 레스토랑</div>
+                </div>
+                <div class="marker park" data-place="han-river">
+                    🌳
+                    <div class="tooltip">한강공원</div>
+                </div>
+                <div class="marker aquarium" data-place="coex-aquarium">
+                    🐠
+                    <div class="tooltip">COEX 아쿠아리움</div>
+                </div>
+                <div class="marker beach" data-place="banpo-rainbow">
+                    🌈
+                    <div class="tooltip">반포 무지개분수</div>
+                </div>
+                <div class="marker hotel" data-place="family-hotel">
+                    🏨
+                    <div class="tooltip">패밀리 호텔</div>
+                </div>
+            </div>
+
+            <div class="floating-info" id="floatingInfo" style="display: none;">
+                <h4 id="infoTitle"></h4>
+                <p id="infoDescription"></p>
+                <div id="infoTags"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 가족 여행지 데이터
+        const places = [
+            {
+                id: 'seoul-playground',
+                name: '서울숲 놀이터',
+                category: 'playground',
+                ageGroup: ['infant', 'child'],
+                description: '넓은 잔디밭과 다양한 놀이시설이 있는 도심 속 자연 놀이공간',
+                tags: ['무료', '주차가능', '피크닉', '자연체험'],
+                rating: 4.5
+            },
+            {
+                id: 'seoul-zoo',
+                name: '서울대공원 동물원',
+                category: 'nature',
+                ageGroup: ['infant', 'child', 'teen'],
+                description: '다양한 동물들을 만날 수 있는 대형 동물원, 스카이리프트 탑승 가능',
+                tags: ['동물체험', '스카이리프트', '교육적', '하루종일'],
+                rating: 4.7
+            },
+            {
+                id: 'science-museum',
+                name: '국립과천과학관',
+                category: 'museum',
+                ageGroup: ['child', 'teen'],
+                description: '체험형 과학 전시와 천체관측이 가능한 국내 최대 과학관',
+                tags: ['교육적', '체험활동', '실내활동', '우천시좋음'],
+                rating: 4.6
+            },
+            {
+                id: 'family-restaurant',
+                name: '키즈카페 레스토랑',
+                category: 'restaurant',
+                ageGroup: ['infant', 'child'],
+                description: '아이들이 놀 수 있는 놀이공간이 있는 가족 친화적 레스토랑',
+                tags: ['놀이시설', '키즈메뉴', '실내', '생일파티'],
+                rating: 4.3
+            },
+            {
+                id: 'han-river',
+                name: '한강공원',
+                category: 'nature',
+                ageGroup: ['infant', 'child', 'teen'],
+                description: '자전거 타기, 피크닉, 수상스포츠를 즐길 수 있는 서울의 대표 공원',
+                tags: ['자전거', '피크닉', '수상스포츠', '야경'],
+                rating: 4.4
+            },
+            {
+                id: 'coex-aquarium',
+                name: 'COEX 아쿠아리움',
+                ageGroup: ['infant', 'child', 'teen'],
+                category: 'museum',
+                description: '도심 속 바다 세계, 다양한 해양생물 관람 및 체험 프로그램',
+                tags: ['실내활동', '해양생물', '체험프로그램', '우천시좋음'],
+                rating: 4.5
+            },
+            {
+                id: 'banpo-rainbow',
+                name: '반포 무지개분수',
+                category: 'nature',
+                ageGroup: ['infant', 'child', 'teen'],
+                description: '음악과 함께하는 아름다운 분수쇼, 여름철 물놀이 가능',
+                tags: ['분수쇼', '야경', '물놀이', '계절한정'],
+                rating: 4.2
+            },
+            {
+                id: 'family-hotel',
+                name: '패밀리 호텔',
+                category: 'hotel',
+                ageGroup: ['infant', 'child', 'teen'],
+                description: '키즈 클럽과 수영장이 있는 가족 전용 호텔',
+                tags: ['키즈클럽', '수영장', '패밀리룸', '조식뷔페'],
+                rating: 4.6
+            }
+        ];
+
+        let currentFilters = {
+            category: 'all',
+            age: 'all'
+        };
+
+        // 필터 버튼 이벤트
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const filterType = this.dataset.category ? 'category' : 'age';
+                const filterValue = this.dataset.category || this.dataset.age;
+                
+                // 같은 타입의 다른 버튼들 비활성화
+                document.querySelectorAll(`[data-${filterType}]`).forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                currentFilters[filterType] = filterValue;
+                updateDisplay();
+            });
+        });
+
+        // 마커 클릭 이벤트
+        document.querySelectorAll('.marker').forEach(marker => {
+            marker.addEventListener('click', function() {
+                const placeId = this.dataset.place;
+                const place = places.find(p => p.id === placeId);
+                showPlaceInfo(place);
+            });
+        });
+
+        function updateDisplay() {
+            const filteredPlaces = places.filter(place => {
+                const categoryMatch = currentFilters.category === 'all' || place.category === currentFilters.category;
+                const ageMatch = currentFilters.age === 'all' || place.ageGroup.includes(currentFilters.age);
+                return categoryMatch && ageMatch;
+            });
+
+            // 사이드바 목록 업데이트
+            updatePlacesList(filteredPlaces);
+            
+            // 지도 마커 표시/숨김
+            updateMapMarkers(filteredPlaces);
+        }
+
+        function updatePlacesList(filteredPlaces) {
+            const placesList = document.getElementById('placesList');
+            placesList.innerHTML = filteredPlaces.map(place => `
+                <div class="place-card" onclick="showPlaceInfo(${JSON.stringify(place).replace(/"/g, '&quot;')})">
+                    <h4>${place.name}</h4>
+                    <div class="place-tags">
+                        ${place.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    <div class="place-info">
+                        ⭐ ${place.rating} | ${getAgeGroupText(place.ageGroup)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateMapMarkers(filteredPlaces) {
+            document.querySelectorAll('.marker').forEach(marker => {
+                const placeId = marker.dataset.place;
+                const isVisible = filteredPlaces.some(place => place.id === placeId);
+                marker.style.display = isVisible ? 'block' : 'none';
+            });
+        }
+
+        function showPlaceInfo(place) {
+            const floatingInfo = document.getElementById('floatingInfo');
+            const infoTitle = document.getElementById('infoTitle');
+            const infoDescription = document.getElementById('infoDescription');
+            const infoTags = document.getElementById('infoTags');
+
+            infoTitle.textContent = place.name;
+            infoDescription.textContent = place.description;
+            infoTags.innerHTML = place.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+
+            floatingInfo.style.display = 'block';
+
+            // 3초 후 자동으로 숨김
+            setTimeout(() => {
+                floatingInfo.style.display = 'none';
+            }, 5000);
+        }
+
+        function getAgeGroupText(ageGroups) {
+            const ageTexts = {
+                'infant': '유아',
+                'child': '어린이',
+                'teen': '청소년'
+            };
+            return ageGroups.map(age => ageTexts[age]).join(', ');
+        }
+
+        // 초기 화면 로드
+        updateDisplay();
+
+        // 플로팅 정보창 클릭시 닫기
+        document.getElementById('floatingInfo').addEventListener('click', function() {
+            this.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
